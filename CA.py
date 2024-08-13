@@ -1,36 +1,127 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report, accuracy_score
 
-# Load dataset
-iris = load_iris()
-X_train, X_test, y_train, y_test = train_test_split(iris.data, iris.target, test_size=0.3, random_state=42)
+# Function to train and predict health_status
+def predict_health_status(csv_file):
+    # Define the columns to use for prediction
+    features = [
+        'temperature_one', 'temperature_two', 'vibration_x', 'vibration_y', 'vibration_z',
+        'magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z'
+    ]
+    
+    # Load the dataset
+    df = pd.read_csv(csv_file)
+    
+    # Separate features and target variable
+    X = df[features]
+    y = df['health_status']
+    
+    # Split the data into training and temporary sets (60-40)
+    X_train, X_temp, y_train, y_temp = train_test_split(X, y, test_size=0.4, random_state=42)
+    
+    # Split the temporary set into validation and test sets (50-50)
+    X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    
+    # Initialize the Random Forest Classifier with regularization
+    clf = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=10,
+        min_samples_split=5,
+        min_samples_leaf=4,
+        random_state=42
+    )
+    
+    # Train the model
+    clf.fit(X_train, y_train)
+    
+    # Evaluate the model on the training set
+    y_train_pred = clf.predict(X_train)
+    print("Training Accuracy Score:", accuracy_score(y_train, y_train_pred))
+    print("Training Classification Report:")
+    print(classification_report(y_train, y_train_pred))
+    
+    # Evaluate the model on the validation set
+    y_val_pred = clf.predict(X_val)
+    print("Validation Accuracy Score:", accuracy_score(y_val, y_val_pred))
+    print("Validation Classification Report:")
+    print(classification_report(y_val, y_val_pred))
+    
+    # Evaluate the model on the test set
+    y_test_pred = clf.predict(X_test)
+    print("Test Accuracy Score:", accuracy_score(y_test, y_test_pred))
+    print("Test Classification Report:")
+    print(classification_report(y_test, y_test_pred))
+    
+    # Perform k-fold cross-validation
+    cross_validate_model(csv_file)
 
-# Define Random Forest model
-rf_model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+# Function to perform k-fold cross-validation
+def cross_validate_model(csv_file, k=5):
+    # Define the columns to use for prediction
+    features = [
+        'temperature_one', 'temperature_two', 'vibration_x', 'vibration_y', 'vibration_z',
+        'magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z'
+    ]
+    
+    # Load the dataset
+    df = pd.read_csv(csv_file)
+    
+    # Separate features and target variable
+    X = df[features]
+    y = df['health_status']
+    
+    # Initialize the Random Forest Classifier
+    clf = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=10,
+        min_samples_split=5,
+        min_samples_leaf=4,
+        random_state=42
+    )
+    
+    # Perform k-fold cross-validation
+    scores = cross_val_score(clf, X, y, cv=k, scoring='accuracy')
+    
+    print(f"{k}-Fold Cross-Validation Accuracy Scores: {scores}")
+    print(f"Mean Accuracy: {scores.mean()}")
+    print(f"Standard Deviation: {scores.std()}")
 
-# Train the model
-rf_model.fit(X_train, y_train)
+# Function for hyperparameter tuning
+def tune_hyperparameters(csv_file):
+    # Define the columns to use for prediction
+    features = [
+        'temperature_one', 'temperature_two', 'vibration_x', 'vibration_y', 'vibration_z',
+        'magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z'
+    ]
+    
+    # Load the dataset
+    df = pd.read_csv(csv_file)
+    
+    # Separate features and target variable
+    X = df[features]
+    y = df['health_status']
+    
+    # Define the parameter grid for Grid Search
+    param_grid = {
+        'n_estimators': [100, 200],
+        'max_depth': [10, 20],
+        'min_samples_split': [2, 5],
+        'min_samples_leaf': [1, 4]
+    }
+    
+    # Initialize the Random Forest Classifier
+    clf = RandomForestClassifier(random_state=42)
+    
+    # Perform Grid Search
+    grid_search = GridSearchCV(clf, param_grid, cv=5, scoring='accuracy')
+    grid_search.fit(X, y)
+    
+    print("Best Parameters:", grid_search.best_params_)
+    print("Best Cross-Validation Score:", grid_search.best_score_)
 
-# Make predictions
-y_pred = rf_model.predict(X_test)
-
-# Evaluate the model
-accuracy = accuracy_score(y_test, y_pred)
-print(f"Accuracy: {accuracy}")
-
-# Calculate and display model statistics
-n_trees = len(rf_model.estimators_)
-print(f"Number of trees: {n_trees}")
-
-# Example: Get depth of each tree
-tree_depths = [estimator.tree_.max_depth for estimator in rf_model.estimators_]
-average_depth = sum(tree_depths) / len(tree_depths)
-print(f"Average tree depth: {average_depth}")
-
-# Example: Get number of nodes in each tree
-n_nodes = [estimator.tree_.node_count for estimator in rf_model.estimators_]
-average_nodes = sum(n_nodes) / len(n_nodes)
-print(f"Average number of nodes per tree: {average_nodes}")
-
+# Example usage
+csv_file = 'dataset.csv'
+predict_health_status(csv_file)
+tune_hyperparameters(csv_file)

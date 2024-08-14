@@ -1,10 +1,11 @@
 import pandas as pd
+import joblib
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, accuracy_score
 
-# Function to train and predict health_status
-def predict_health_status(csv_file):
+# Function to train, predict health_status, and save the model
+def predict_health_status(csv_file, model_save_path='trained_model.pkl'):
     # Define the columns to use for prediction
     features = [
         'temperature_one', 'temperature_two', 'vibration_x', 'vibration_y', 'vibration_z',
@@ -35,6 +36,10 @@ def predict_health_status(csv_file):
     
     # Train the model
     clf.fit(X_train, y_train)
+    
+    # Save the trained model
+    joblib.dump(clf, model_save_path)
+    print(f"Model saved to {model_save_path}")
     
     # Evaluate the model on the training set
     y_train_pred = clf.predict(X_train)
@@ -122,6 +127,6 @@ def tune_hyperparameters(csv_file):
     print("Best Cross-Validation Score:", grid_search.best_score_)
 
 # Example usage
-csv_file = 'dataset.csv'
-predict_health_status(csv_file)
+csv_file = 'dataset2.csv'
+predict_health_status(csv_file, 'health_status_model.pkl')
 tune_hyperparameters(csv_file)

@@ -11,7 +11,9 @@ df = pd.read_csv('dataset2.csv')
 feature_sets = {
     'temperature_model': ['temperature_one', 'temperature_two'],
     'vibration_model': ['vibration_x', 'vibration_y', 'vibration_z'],
-    'magnetic_flux_model': ['magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z']
+    'magnetic_flux_model': ['magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z'],
+    'audible_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'audible_sound'],  # New model
+    'ultra_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'ultra_sound']       # New model
 }
 
 # Initialize a dictionary to store models and their accuracy
@@ -48,4 +50,3 @@ for model_name, features in feature_sets.items():
 print("\nModel Accuracies:")
 for model_name, accuracy in accuracies.items():
     print(f"{model_name}: {accuracy:.2f}")
-

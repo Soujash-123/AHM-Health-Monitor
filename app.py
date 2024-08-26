@@ -6,14 +6,22 @@ import time
 app = Flask(__name__)
 
 # Load the models
-model_names = ['temperature_model', 'vibration_model', 'magnetic_flux_model']
+model_names = [
+    'temperature_model', 
+    'vibration_model', 
+    'magnetic_flux_model',
+    'audible_sound_model',  # New model
+    'ultra_sound_model'     # New model
+]
 models = {name: joblib.load(f"{name}.pkl") for name in model_names}
 
 # Define the feature sets used by each model
 feature_sets = {
     'temperature_model': ['temperature_one', 'temperature_two'],
     'vibration_model': ['vibration_x', 'vibration_y', 'vibration_z'],
-    'magnetic_flux_model': ['magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z']
+    'magnetic_flux_model': ['magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z'],
+    'audible_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'audible_sound'],  # New features
+    'ultra_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'ultra_sound']       # New features
 }
 
 def predict_from_models(input_data):
@@ -57,7 +65,11 @@ def calculate_expected_timestamp(input_data):
     magnetic_flux = sum(input_data[key] for key in feature_sets['magnetic_flux_model'])
     vibration = sum(input_data[key] for key in feature_sets['vibration_model'])
     
-    expected_seconds = 3 * temperature + 5 * magnetic_flux + 2 * vibration
+    # Assuming that 'audible_sound' and 'ultra_sound' fields also affect timestamp calculation
+    audible_sound = input_data.get('audible_sound', 0)
+    ultra_sound = input_data.get('ultra_sound', 0)
+    
+    expected_seconds = 3 * temperature + 5 * magnetic_flux + 2 * vibration + audible_sound + ultra_sound
     
     return expected_seconds
 
@@ -79,6 +91,8 @@ def predict():
         "Component Temperature": predictions['temperature'],
         "Component Vibration": predictions['vibration'],
         "Component Magnetic Flux": predictions['magnetic_flux'],
+        "Component Audible Sound": predictions['audible_sound'],  # New field
+        "Component Ultra Sound": predictions['ultra_sound'],      # New field
         "Overall health": overall_health,
         "Unhealthy TimeStamp": expected_timestamp
     }
@@ -87,4 +101,3 @@ def predict():
 
 if __name__ == '__main__':
     app.run(debug=True)
-

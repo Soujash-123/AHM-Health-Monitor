@@ -24,6 +24,10 @@ feature_sets = {
     'ultra_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'ultra_sound']       # New features
 }
 
+def convert_to_numerical(input_data):
+    """Convert all input values to numerical (float) types."""
+    return {key: float(value) for key, value in input_data.items()}
+
 def predict_from_models(input_data):
     # Create a DataFrame from the input data
     df_input = pd.DataFrame([input_data])
@@ -77,14 +81,17 @@ def calculate_expected_timestamp(input_data):
 def predict():
     input_data = request.json
     
+    # Convert input data to numerical values
+    numerical_input_data = convert_to_numerical(input_data)
+    
     # Get predictions from models
-    predictions = predict_from_models(input_data)
+    predictions = predict_from_models(numerical_input_data)
     
     # Evaluate overall health state
     overall_health = evaluate_state(predictions)
     
     # Calculate expected timestamp
-    expected_timestamp = calculate_expected_timestamp(input_data) if ("Warning" in overall_health or "Unhealthy" in overall_health) else 0
+    expected_timestamp = calculate_expected_timestamp(numerical_input_data) if ("Warning" in overall_health or "Unhealthy" in overall_health) else 0
     
     # Prepare the response
     response = {

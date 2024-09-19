@@ -83,8 +83,8 @@ def predict():
     # Evaluate overall health state
     overall_health = evaluate_state(predictions)
     
-    # Calculate expected timestamp
-    expected_timestamp = calculate_expected_timestamp(input_data) if ("Warning" in overall_health or "Unhealthy" in overall_health) else 0
+    # Calculate expected timestamp if "Warning" or "Unhealthy" is in the overall_health
+    expected_timestamp = calculate_expected_timestamp(input_data) if "Warning" in overall_health or "Unhealthy" in overall_health else 0
     
     # Prepare the response
     response = {

@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 import joblib
-import time
 
 app = Flask(__name__)
 
@@ -10,8 +9,8 @@ model_names = [
     'temperature_model', 
     'vibration_model', 
     'magnetic_flux_model',
-    'audible_sound_model',  # New model
-    'ultra_sound_model'     # New model
+    'audible_sound_model',
+    'ultra_sound_model'
 ]
 models = {name: joblib.load(f"{name}.pkl") for name in model_names}
 
@@ -20,83 +19,77 @@ feature_sets = {
     'temperature_model': ['temperature_one', 'temperature_two'],
     'vibration_model': ['vibration_x', 'vibration_y', 'vibration_z'],
     'magnetic_flux_model': ['magnetic_flux_x', 'magnetic_flux_y', 'magnetic_flux_z'],
-    'audible_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'audible_sound'],  # New features
-    'ultra_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'ultra_sound']       # New features
+    'audible_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'audible_sound'],
+    'ultra_sound_model': ['vibration_x', 'vibration_y', 'vibration_z', 'ultra_sound']
 }
 
 def predict_from_models(input_data):
-    # Create a DataFrame from the input data
     df_input = pd.DataFrame([input_data])
-    
-    # Dictionary to store predictions
     predictions = {}
     
-    # Predict using each model
     for model_name in model_names:
         features = feature_sets[model_name]
         model = models[model_name]
-        
-        # Select relevant features from the input data
         X_input = df_input[features]
-        
-        # Predict and store the result in the dictionary
         prediction = model.predict(X_input)[0]
         predictions[model_name.replace('_model', '')] = prediction
     
     return predictions
 
-def evaluate_state(predictions):
-    # Determine state based on predictions
-    all_healthy = all(p == 'healthy' for p in predictions.values())
-    all_unhealthy = all(p == 'unhealthy' for p in predictions.values())
-    
-    if all_healthy:
-        overall_health = "Healthy state"
-    elif all_unhealthy:
-        overall_health = "Unhealthy state"
+def evaluate_machine_condition(temperature, vibration):
+    if temperature < 80 and vibration < 1.8:
+        return "Safe Condition"
+    elif temperature < 100 and vibration < 2.8:
+        return "Maintain Condition"
     else:
-        unhealthy_components = [key for key, value in predictions.items() if value == 'unhealthy']
-        overall_health = f"Warning. Unhealthy components detected: {unhealthy_components}"
-    
-    return overall_health
+        return "Repair Condition"
 
-def calculate_expected_timestamp(input_data):
-    temperature = sum(int(input_data[key]) for key in feature_sets['temperature_model'])
-    magnetic_flux = sum(int(input_data[key]) for key in feature_sets['magnetic_flux_model'])
-    vibration = sum(int(input_data[key]) for key in feature_sets['vibration_model'])
-    
-    # Assuming that 'audible_sound' and 'ultra_sound' fields also affect timestamp calculation
-    audible_sound = input_data.get('audible_sound', 0)
-    ultra_sound = input_data.get('ultra_sound', 0)
-    
-    expected_seconds = 3 * temperature + 5 * magnetic_flux + 2 * vibration + audible_sound + ultra_sound
-    
-    return expected_seconds
+def detect_temperature_anomaly(temperature):
+    if temperature < 80:
+        return "No significant temperature anomaly detected"
+    elif 80 <= temperature < 100:
+        return "Moderate Overheating - Check Lubrication"
+    elif 100 <= temperature < 120:
+        return "Significant Overheating - Possible Misalignment or Bearing Wear"
+    else:
+        return "Critical Overheating - Immediate Repair Needed"
+
+def detect_vibration_anomaly(vibration):
+    if vibration < 1.8:
+        return "No significant vibration anomaly detected"
+    elif 1.8 <= vibration < 2.8:
+        return "Unbalance Fault"
+    elif 2.8 <= vibration < 4.5:
+        return "Misalignment Fault"
+    elif 4.5 <= vibration < 7.1:
+        return "Looseness Fault"
+    else:
+        return "Bearing Fault or Gear Mesh Fault"
 
 @app.route('/predict', methods=['POST'])
 def predict():
     input_data = request.json
-    
-    # Get predictions from models
     predictions = predict_from_models(input_data)
     
-    # Evaluate overall health state
-    overall_health = evaluate_state(predictions)
+    # Calculate average temperature and maximum vibration
+    temperature = (input_data['temperature_one'] + input_data['temperature_two']) / 2
+    vibration = max(input_data['vibration_x'], input_data['vibration_y'], input_data['vibration_z'])
     
-    # Calculate expected timestamp
-    expected_timestamp = 0
-    if "Warning" in overall_health or "Unhealthy" in overall_health:
-        expected_timestamp = calculate_expected_timestamp(input_data)
+    machine_condition = evaluate_machine_condition(temperature, vibration)
+    temperature_anomaly = detect_temperature_anomaly(temperature)
+    vibration_anomaly = detect_vibration_anomaly(vibration)
     
-    # Prepare the response
     response = {
         "Component Temperature": predictions['temperature'],
         "Component Vibration": predictions['vibration'],
         "Component Magnetic Flux": predictions['magnetic_flux'],
-        "Component Audible Sound": predictions['audible_sound'],  # New field
-        "Component Ultra Sound": predictions['ultra_sound'],      # New field
-        "Overall health": overall_health,
-        "Unhealthy TimeStamp": expected_timestamp
+        "Component Audible Sound": predictions['audible_sound'],
+        "Component Ultra Sound": predictions['ultra_sound'],
+        "Machine Condition": machine_condition,
+        "Temperature Anomaly": temperature_anomaly,
+        "Vibration Anomaly": vibration_anomaly,
+        "Average Temperature": temperature,
+        "Maximum Vibration": vibration
     }
     
     return jsonify(response)

@@ -66,6 +66,16 @@ def detect_vibration_anomaly(vibration):
     else:
         return "Bearing Fault or Gear Mesh Fault"
 
+def determine_overall_health(predictions):
+    unhealthy_components = [component for component, status in predictions.items() if status == 1]
+    
+    if len(unhealthy_components) == 0:
+        return "Healthy"
+    elif len(unhealthy_components) == len(predictions):
+        return "Unhealthy"
+    else:
+        return f"Unhealthy components: {', '.join(unhealthy_components)}"
+
 @app.route('/predict', methods=['POST'])
 def predict():
     input_data = request.json
@@ -79,6 +89,8 @@ def predict():
     temperature_anomaly = detect_temperature_anomaly(temperature)
     vibration_anomaly = detect_vibration_anomaly(vibration)
     
+    overall_health = determine_overall_health(predictions)
+    
     response = {
         "Component Temperature": predictions['temperature'],
         "Component Vibration": predictions['vibration'],
@@ -89,7 +101,8 @@ def predict():
         "Temperature Anomaly": temperature_anomaly,
         "Vibration Anomaly": vibration_anomaly,
         "Average Temperature": temperature,
-        "Maximum Vibration": vibration
+        "Maximum Vibration": vibration,
+        "Overall Health": overall_health
     }
     
     return jsonify(response)

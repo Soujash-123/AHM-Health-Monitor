@@ -68,7 +68,7 @@ def detect_vibration_anomaly(vibration):
 
 def determine_overall_health(predictions):
     # If all predictions are 0 (healthy), return "Healthy". Otherwise, return "Unhealthy".
-    if all(status == 0 for status in predictions.values()):
+    if all(status == 0 for status in predictions.values()) or all(status == "Healthy" for status in predictions.values()):
         return "Healthy"
     else:
         return "Unhealthy"

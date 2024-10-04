@@ -67,14 +67,11 @@ def detect_vibration_anomaly(vibration):
         return "Bearing Fault or Gear Mesh Fault"
 
 def determine_overall_health(predictions):
-    unhealthy_components = [component for component, status in predictions.items() if status == 1]
-    
-    if len(unhealthy_components) == 0:
+    # If all predictions are 0 (healthy), return "Healthy". Otherwise, return "Unhealthy".
+    if all(status == 0 for status in predictions.values()):
         return "Healthy"
-    elif len(unhealthy_components) == len(predictions):
-        return "Unhealthy"
     else:
-        return f"Unhealthy components: {', '.join(unhealthy_components)}"
+        return "Unhealthy"
 
 @app.route('/predict', methods=['POST'])
 def predict():

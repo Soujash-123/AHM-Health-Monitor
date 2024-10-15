@@ -24,15 +24,15 @@ feature_sets = {
 }
 
 def predict_from_models(input_data):
-    df_input = pd.DataFrame([input_data])
-    predictions = {}
+    df_input = pd.DataFrame(input_data)
+    predictions = {model_name.replace('_model', ''): [] for model_name in model_names}
     
     for model_name in model_names:
         features = feature_sets[model_name]
         model = models[model_name]
         X_input = df_input[features]
-        prediction = model.predict(X_input)[0]
-        predictions[model_name.replace('_model', '')] = prediction
+        model_predictions = model.predict(X_input)
+        predictions[model_name.replace('_model', '')] = model_predictions.tolist()
     
     return predictions
 
@@ -76,33 +76,44 @@ def determine_overall_health(predictions):
 @app.route('/predict', methods=['POST'])
 def predict():
     input_data = request.json
+    if not isinstance(input_data, list) or len(input_data) > 200:
+        return jsonify({"error": "Input should be a list of up to 200 entries."}), 400
+
     predictions = predict_from_models(input_data)
     
-    # Calculate average temperature and maximum vibration
-    temperature = (input_data['temperature_one'] + input_data['temperature_two']) / 2
-    vibration = max(input_data['vibration_x'], input_data['vibration_y'], input_data['vibration_z'])
+    results = []
+    for idx, entry in enumerate(input_data):
+        # Calculate average temperature and maximum vibration for each entry
+        temperature = (entry['temperature_one'] + entry['temperature_two']) / 2
+        vibration = max(entry['vibration_x'], entry['vibration_y'], entry['vibration_z'])
+        
+        machine_condition = evaluate_machine_condition(temperature, vibration)
+        temperature_anomaly = detect_temperature_anomaly(temperature)
+        vibration_anomaly = detect_vibration_anomaly(vibration)
+        
+        entry_result = {
+            "Component Temperature": predictions['temperature'][idx],
+            "Component Vibration": predictions['vibration'][idx],
+            "Component Magnetic Flux": predictions['magnetic_flux'][idx],
+            "Component Audible Sound": predictions['audible_sound'][idx],
+            "Component Ultra Sound": predictions['ultra_sound'][idx],
+            "Machine Condition": machine_condition,
+            "Temperature Anomaly": temperature_anomaly,
+            "Vibration Anomaly": vibration_anomaly,
+            "Average Temperature": temperature,
+            "Maximum Vibration": vibration,
+            "Overall Health": determine_overall_health({
+                'temperature': predictions['temperature'][idx],
+                'vibration': predictions['vibration'][idx],
+                'magnetic_flux': predictions['magnetic_flux'][idx],
+                'audible_sound': predictions['audible_sound'][idx],
+                'ultra_sound': predictions['ultra_sound'][idx]
+            })
+        }
+        
+        results.append(entry_result)
     
-    machine_condition = evaluate_machine_condition(temperature, vibration)
-    temperature_anomaly = detect_temperature_anomaly(temperature)
-    vibration_anomaly = detect_vibration_anomaly(vibration)
-    
-    overall_health = determine_overall_health(predictions)
-    
-    response = {
-        "Component Temperature": predictions['temperature'],
-        "Component Vibration": predictions['vibration'],
-        "Component Magnetic Flux": predictions['magnetic_flux'],
-        "Component Audible Sound": predictions['audible_sound'],
-        "Component Ultra Sound": predictions['ultra_sound'],
-        "Machine Condition": machine_condition,
-        "Temperature Anomaly": temperature_anomaly,
-        "Vibration Anomaly": vibration_anomaly,
-        "Average Temperature": temperature,
-        "Maximum Vibration": vibration,
-        "Overall Health": overall_health
-    }
-    
-    return jsonify(response)
+    return jsonify(results)
 
 if __name__ == '__main__':
     app.run(debug=True)

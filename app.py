@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import pandas as pd
 import joblib
+from collections import Counter
 
 app = Flask(__name__)
 
@@ -112,7 +113,22 @@ def anomaly20010():
     if not isinstance(input_data_list, list) or len(input_data_list) > 200:
         return jsonify({"error": "Input must be a list of up to 200 entries"}), 400
 
-    results = []
+    # Lists to collect results for majority voting or averaging
+    temperatures = []
+    vibrations = []
+    magnetic_fluxes = []
+    audible_sounds = []
+    ultra_sounds = []
+    
+    machine_conditions = []
+    temperature_anomalies = []
+    vibration_anomalies = []
+    overall_healths = []
+    
+    # Lists to collect average values for temperature and maximum vibration
+    avg_temperatures = []
+    max_vibrations = []
+
     for input_data in input_data_list:
         predictions = predict_from_models(input_data)
         
@@ -123,26 +139,55 @@ def anomaly20010():
         machine_condition = evaluate_machine_condition(temperature, vibration)
         temperature_anomaly = detect_temperature_anomaly(temperature)
         vibration_anomaly = detect_vibration_anomaly(vibration)
-        
         overall_health = determine_overall_health(predictions)
         
-        response = {
-            "Component Temperature": predictions['temperature'],
-            "Component Vibration": predictions['vibration'],
-            "Component Magnetic Flux": predictions['magnetic_flux'],
-            "Component Audible Sound": predictions['audible_sound'],
-            "Component Ultra Sound": predictions['ultra_sound'],
-            "Machine Condition": machine_condition,
-            "Temperature Anomaly": temperature_anomaly,
-            "Vibration Anomaly": vibration_anomaly,
-            "Average Temperature": temperature,
-            "Maximum Vibration": vibration,
-            "Overall Health": overall_health
-        }
+        # Collect results for each key
+        temperatures.append(predictions['temperature'])
+        vibrations.append(predictions['vibration'])
+        magnetic_fluxes.append(predictions['magnetic_flux'])
+        audible_sounds.append(predictions['audible_sound'])
+        ultra_sounds.append(predictions['ultra_sound'])
         
-        results.append(response)
-    
-    return jsonify(results)
+        machine_conditions.append(machine_condition)
+        temperature_anomalies.append(temperature_anomaly)
+        vibration_anomalies.append(vibration_anomaly)
+        overall_healths.append(overall_health)
+        
+        avg_temperatures.append(temperature)
+        max_vibrations.append(vibration)
 
+    # Calculate majority results for categorical keys
+    majority_machine_condition = Counter(machine_conditions).most_common(1)[0][0]
+    majority_temperature_anomaly = Counter(temperature_anomalies).most_common(1)[0][0]
+    majority_vibration_anomaly = Counter(vibration_anomalies).most_common(1)[0][0]
+    majority_overall_health = Counter(overall_healths).most_common(1)[0][0]
+    
+    # Calculate average results for numeric keys
+    avg_component_temperature = sum(temperatures) / len(temperatures)
+    avg_component_vibration = sum(vibrations) / len(vibrations)
+    avg_component_magnetic_flux = sum(magnetic_fluxes) / len(magnetic_fluxes)
+    avg_component_audible_sound = sum(audible_sounds) / len(audible_sounds)
+    avg_component_ultra_sound = sum(ultra_sounds) / len(ultra_sounds)
+    
+    # Calculate overall average temperature and max vibration across all 200 entries
+    overall_avg_temperature = sum(avg_temperatures) / len(avg_temperatures)
+    overall_max_vibration = max(max_vibrations)
+
+    # Prepare the single majority-based response
+    response = {
+        "Component Temperature": avg_component_temperature,
+        "Component Vibration": avg_component_vibration,
+        "Component Magnetic Flux": avg_component_magnetic_flux,
+        "Component Audible Sound": avg_component_audible_sound,
+        "Component Ultra Sound": avg_component_ultra_sound,
+        "Machine Condition": majority_machine_condition,
+        "Temperature Anomaly": majority_temperature_anomaly,
+        "Vibration Anomaly": majority_vibration_anomaly,
+        "Average Temperature": overall_avg_temperature,
+        "Maximum Vibration": overall_max_vibration,
+        "Overall Health": majority_overall_health
+    }
+
+    return jsonify(response)
 if __name__ == '__main__':
     app.run(debug=True)
